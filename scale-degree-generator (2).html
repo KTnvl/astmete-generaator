@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astmenumbrite Generaator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: white;
+        }
+
+        .controls {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        label {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        input[type="number"],
+        select {
+            padding: 8px 12px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            background: white;
+            color: #333;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+            color: #667eea;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #startBtn {
+            background: #4CAF50;
+            color: white;
+        }
+
+        #stopBtn {
+            background: #FF9800;
+            color: white;
+            display: none;
+        }
+
+        .display {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .degree-display {
+            font-size: 200px;
+            font-weight: bold;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s;
+            white-space: nowrap;
+        }
+
+        .degree-display.multiple {
+            font-size: 120px;
+        }
+
+        .degree-display.many {
+            font-size: 80px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .waiting-text {
+            font-size: 48px;
+            opacity: 0.7;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .degree-display {
+                font-size: 120px;
+            }
+
+            .degree-display.multiple {
+                font-size: 70px;
+            }
+
+            .degree-display.many {
+                font-size: 50px;
+            }
+            
+            .waiting-text {
+                font-size: 32px;
+            }
+
+            .controls {
+                padding: 15px;
+                gap: 15px;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div class="control-group">
+            <label for="generationMode">Režiim:</label>
+            <select id="generationMode">
+                <option value="random">Juhuslik</option>
+                <option value="manual">Käsitsi valitud</option>
+            </select>
+        </div>
+
+        <div class="control-group" id="manualInputGroup" style="display: none;">
+            <label for="manualSequence">Astmete järjestus:</label>
+            <input type="text" id="manualSequence" placeholder="nt: I III V' II, IV või jo mi so' le, na" style="width: 400px;">
+        </div>
+
+        <div class="control-group">
+            <label for="tempo">Tempo (sekundit):</label>
+            <input type="number" id="tempo" min="1" max="10" value="3" step="0.5">
+        </div>
+
+        <div class="control-group">
+            <label for="notation">Tähistus:</label>
+            <select id="notation">
+                <option value="roman">Rooma numbrid</option>
+                <option value="estonian">Astmenimed</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="mode">Helilaad:</label>
+            <select id="mode">
+                <option value="major">Duur</option>
+                <option value="minor">Moll</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="range">Astmete vahemik:</label>
+            <select id="range">
+                <option value="1-7">Kõik astmed</option>
+                <option value="1-4-5">I-IV-V (põhiastmed)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="octaves">Oktavihüpped:</label>
+            <select id="octaves">
+                <option value="no">Ei</option>
+                <option value="yes">Jah</option>
+            </select>
+        </div>
+
+        <div class="control-group" style="flex-direction: column; align-items: flex-start;">
+            <label style="margin-bottom: 8px;">Intervallid:</label>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                    <input type="checkbox" id="interval2" checked> Sekundid
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                    <input type="checkbox" id="interval3" checked> Tertsid
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                    <input type="checkbox" id="interval4" checked> Kvardid
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                    <input type="checkbox" id="interval5" checked> Kvindid
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                    <input type="checkbox" id="interval6" checked> Sekstid
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; font-weight: normal;">
+                    <input type="checkbox" id="interval7" checked> Septimid
+                </label>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label for="direction">Suund:</label>
+            <select id="direction">
+                <option value="both">Mõlemad (üles ja alla)</option>
+                <option value="up">Ainult üles</option>
+                <option value="down">Ainult alla</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label for="count">Astmete arv korraga:</label>
+            <select id="count">
+                <option value="1" selected>1 aste</option>
+                <option value="2">2 astet</option>
+                <option value="3">3 astet</option>
+                <option value="4">4 astet</option>
+                <option value="5">5 astet</option>
+                <option value="6">6 astet</option>
+                <option value="7">7 astet</option>
+                <option value="8">8 astet</option>
+            </select>
+        </div>
+
+        <button id="startBtn">ALUSTA</button>
+        <button id="stopBtn">PAUS</button>
+    </div>
+
+    <div class="display">
+        <div id="degreeDisplay" class="waiting-text">Vajuta "Alusta"</div>
+    </div>
+
+    <script>
+        let intervalId = null;
+        let isRunning = false;
+        let manualSequence = [];
+        let manualIndex = 0;
+        let lastDegreeNumber = null; // Viimase astme number (0-8)
+        let lastOctaveOffset = 0; // Viimase oktaavi nihe (-1, 0, +1)
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const tempoInput = document.getElementById('tempo');
+        const generationModeSelect = document.getElementById('generationMode');
+        const manualInputGroup = document.getElementById('manualInputGroup');
+        const manualSequenceInput = document.getElementById('manualSequence');
+        const notationSelect = document.getElementById('notation');
+        const modeSelect = document.getElementById('mode');
+        const rangeSelect = document.getElementById('range');
+        const octavesSelect = document.getElementById('octaves');
+        const interval2Check = document.getElementById('interval2');
+        const interval3Check = document.getElementById('interval3');
+        const interval4Check = document.getElementById('interval4');
+        const interval5Check = document.getElementById('interval5');
+        const interval6Check = document.getElementById('interval6');
+        const interval7Check = document.getElementById('interval7');
+        const directionSelect = document.getElementById('direction');
+        const countSelect = document.getElementById('count');
+        const degreeDisplay = document.getElementById('degreeDisplay');
+
+        const romanNumerals = {
+            major: ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'],
+            minor: ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', '#VI', '#VII']
+        };
+
+        const estonianNames = {
+            major: ['jo', 'le', 'mi', 'na', 'so', 'ra', 'di'],
+            minor: ['ra', 'di', 'jo', 'le', 'mi', 'na', 'so', 'ni', 'si']
+        };
+
+        // Näita/peida käsitsi sisestuse väli
+        generationModeSelect.addEventListener('change', () => {
+            if (generationModeSelect.value === 'manual') {
+                manualInputGroup.style.display = 'flex';
+            } else {
+                manualInputGroup.style.display = 'none';
+            }
+        });
+
+        function getSmartOctave(currentDegreeIndex) {
+            // Kui see on esimene aste, alusta tavalisest oktaavist
+            if (lastDegreeNumber === null) {
+                return 0;
+            }
+            
+            // Arvuta eelmise astme absoluutne positsioon (oktaavides + astmed)
+            const lastAbsolutePosition = lastOctaveOffset * 7 + lastDegreeNumber;
+            
+            // Määra võimalikud oktaavid sõltuvalt astmest
+            let possibleOctaves = [0]; // Tavaline oktaav on alati võimalik
+            
+            // Madalam oktaav ainult: V, VI, VII (indeksid 4, 5, 6) - nii duuris kui mollis
+            // Duuris: so, ra, di
+            // Mollis: mi, na, so
+            if (currentDegreeIndex >= 4 && currentDegreeIndex <= 6) {
+                possibleOctaves.push(-1);
+            }
+            
+            // Kõrgem oktaav ainult astmetele I, II, III (indeks 0-2)
+            if (currentDegreeIndex <= 2) {
+                possibleOctaves.push(1);
+            }
+            
+            // Leia lähim oktaav
+            let bestOctave = 0;
+            let smallestJump = Infinity;
+            
+            for (const octave of possibleOctaves) {
+                const currentAbsolutePosition = octave * 7 + currentDegreeIndex;
+                const jump = Math.abs(currentAbsolutePosition - lastAbsolutePosition);
+                
+                if (jump < smallestJump) {
+                    smallestJump = jump;
+                    bestOctave = octave;
+                }
+            }
+            
+            return bestOctave;
+        }
+
+        function isIntervalAllowed(interval) {
+            const absInterval = Math.abs(interval);
+            
+            // Kontrolli, kas ükski checkbox on valitud
+            const anyChecked = interval2Check.checked || interval3Check.checked || 
+                               interval4Check.checked || interval5Check.checked || 
+                               interval6Check.checked || interval7Check.checked;
+            
+            // Kui ükski pole valitud, luba kõik
+            if (!anyChecked) return true;
+            
+            // Kontrolli, kas intervall vastab mõnele valitud checkboxile
+            if (absInterval >= 1 && absInterval <= 2 && interval2Check.checked) return true;
+            if (absInterval >= 2 && absInterval <= 3 && interval3Check.checked) return true;
+            if (absInterval >= 3 && absInterval <= 4 && interval4Check.checked) return true;
+            if (absInterval >= 4 && absInterval <= 5 && interval5Check.checked) return true;
+            if (absInterval >= 5 && absInterval <= 6 && interval6Check.checked) return true;
+            if (absInterval >= 6 && absInterval <= 7 && interval7Check.checked) return true;
+            
+            return false;
+        }
+
+        function getDegreeWithInterval() {
+            const range = rangeSelect.value;
+            const mode = modeSelect.value;
+            const direction = directionSelect.value;
+            let possibleIndices;
+            
+            // Määra põhilised võimalikud astmed (ilma oktaavita)
+            if (range === '1-4-5') {
+                possibleIndices = [0, 3, 4]; // I, IV, V
+            } else {
+                const max = (mode === 'minor') ? 9 : 7;
+                possibleIndices = Array.from({length: max}, (_, i) => i);
+            }
+            
+            // Kontrolli kas intervallidepiirang on aktiivne
+            const anyIntervalChecked = interval2Check.checked || interval3Check.checked || 
+                                       interval4Check.checked || interval5Check.checked || 
+                                       interval6Check.checked || interval7Check.checked;
+            
+            // Kui see on esimene aste või intervallidepiirangut pole
+            if (lastDegreeNumber === null || !anyIntervalChecked) {
+                const randomIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
+                return { degreeIndex: randomIndex, octaveOffset: 0 };
+            }
+            
+            // Arvuta eelmise astme absoluutne positsioon
+            const lastAbsolutePosition = lastOctaveOffset * 7 + lastDegreeNumber;
+            
+            // Leia kõik võimalikud kombinatsioonid (aste + oktaav), mis vastavad tingimustele
+            const candidates = [];
+            
+            for (const degreeIndex of possibleIndices) {
+                // Proovi erinevaid oktaave
+                const octaveOptions = [-1, 0, 1];
+                
+                for (const octave of octaveOptions) {
+                    // Kontrolli oktaavi piiranguid
+                    if (octave === -1 && (degreeIndex < 4 || degreeIndex > 6)) continue;
+                    if (octave === 1 && degreeIndex > 2) continue;
+                    
+                    const currentAbsolutePosition = octave * 7 + degreeIndex;
+                    const interval = currentAbsolutePosition - lastAbsolutePosition;
+                    
+                    // Kontrolli suunda
+                    if (direction === 'up' && interval <= 0) continue;
+                    if (direction === 'down' && interval >= 0) continue;
+                    
+                    // Kontrolli intervalli suurust
+                    if (isIntervalAllowed(interval)) {
+                        candidates.push({ degreeIndex, octaveOffset: octave });
+                    }
+                }
+            }
+            
+            // Kui kandidaate ei ole, lõdvenda piiranguid ja vali suvaline
+            if (candidates.length === 0) {
+                const randomIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
+                return { degreeIndex: randomIndex, octaveOffset: 0 };
+            }
+            
+            // Vali juhuslik kandidaat
+            return candidates[Math.floor(Math.random() * candidates.length)];
+        }
+
+        function parseManualSequence() {
+            const input = manualSequenceInput.value.trim();
+            if (!input) return [];
+            
+            // Eralda astmed (võib olla tühikute, komade või kriipsudega eraldatud)
+            // Säilitame ' ja , märgid astmenimedes
+            const parts = input.split(/[\s\-]+/).filter(part => part.length > 0);
+            
+            return parts.map(part => {
+                // Kontrolli kas on oktaavimärgistus lõpus
+                const hasApostrophe = part.endsWith("'");
+                const hasComma = part.endsWith(',');
+                
+                // Eemalda ajutiselt oktaavimärgistus
+                let cleanPart = part.replace(/[',]$/, '');
+                
+                // Vorminda põhiaste
+                let formatted = cleanPart.charAt(0).toUpperCase() + cleanPart.slice(1).toLowerCase();
+                
+                // Lisa oktaavimärgistus tagasi
+                if (hasApostrophe) formatted += "'";
+                if (hasComma) formatted += ',';
+                
+                return formatted;
+            });
+        }
+
+        function getRandomDegree() {
+            const notation = notationSelect.value;
+            const useOctaves = octavesSelect.value === 'yes';
+            const direction = directionSelect.value;
+            
+            // Kontrolli kas intervallidepiirang on aktiivne
+            const anyIntervalChecked = interval2Check.checked || interval3Check.checked || 
+                                       interval4Check.checked || interval5Check.checked || 
+                                       interval6Check.checked || interval7Check.checked;
+            
+            let degreeIndex, octaveOffset;
+            
+            // Kui on intervallide piirang või suunapiirang, kasuta intelligentset valikut
+            if (anyIntervalChecked || direction !== 'both') {
+                const result = getDegreeWithInterval();
+                degreeIndex = result.degreeIndex;
+                octaveOffset = useOctaves ? result.octaveOffset : 0;
+            } else {
+                // Muidu vana loogika
+                const range = rangeSelect.value;
+                const mode = modeSelect.value;
+                let possibleIndices;
+                
+                if (range === '1-4-5') {
+                    possibleIndices = [0, 3, 4];
+                } else {
+                    const max = (mode === 'minor') ? 9 : 7;
+                    possibleIndices = Array.from({length: max}, (_, i) => i);
+                }
+                
+                degreeIndex = possibleIndices[Math.floor(Math.random() * possibleIndices.length)];
+                octaveOffset = useOctaves ? getSmartOctave(degreeIndex) : 0;
+            }
+            
+            const mode = modeSelect.value;
+            let degree;
+            if (notation === 'estonian') {
+                degree = estonianNames[mode][degreeIndex];
+            } else {
+                degree = romanNumerals[mode][degreeIndex];
+            }
+            
+            // Lisa oktaavimärgistused
+            if (octaveOffset === -1) {
+                degree = degree + ',';
+            } else if (octaveOffset === 1) {
+                degree = degree + "'";
+            }
+            
+            // Salvesta viimane aste järgmise võrdlemiseks
+            lastDegreeNumber = degreeIndex;
+            lastOctaveOffset = octaveOffset;
+            
+            return degree;
+        }
+
+        function showNewDegree() {
+            const generationMode = generationModeSelect.value;
+            let degrees = [];
+            
+            if (generationMode === 'manual') {
+                // Käsitsi režiim - näita järgmist astet järjestusest
+                if (manualSequence.length === 0) {
+                    degreeDisplay.textContent = 'Sisesta astmete järjestus';
+                    degreeDisplay.className = 'waiting-text';
+                    return;
+                }
+                
+                const count = parseInt(countSelect.value);
+                for (let i = 0; i < count; i++) {
+                    degrees.push(manualSequence[manualIndex]);
+                    manualIndex = (manualIndex + 1) % manualSequence.length; // Loop
+                }
+            } else {
+                // Juhuslik režiim
+                const count = parseInt(countSelect.value);
+                for (let i = 0; i < count; i++) {
+                    degrees.push(getRandomDegree());
+                }
+            }
+            
+            degreeDisplay.textContent = degrees.join(' - ');
+            
+            // Vali õige klass sõltuvalt astmete arvust
+            const count = parseInt(countSelect.value);
+            if (count === 1) {
+                degreeDisplay.className = 'degree-display';
+            } else if (count <= 4) {
+                degreeDisplay.className = 'degree-display multiple';
+            } else {
+                degreeDisplay.className = 'degree-display many';
+            }
+        }
+
+        function start() {
+            if (isRunning) return;
+            
+            // Kui käsitsi režiim, parsi järjestus
+            if (generationModeSelect.value === 'manual') {
+                manualSequence = parseManualSequence();
+                manualIndex = 0;
+                
+                if (manualSequence.length === 0) {
+                    alert('Palun sisesta astmete järjestus!');
+                    return;
+                }
+            }
+            
+            // Lähtesta oktaavi jälgimine
+            lastDegreeNumber = null;
+            lastOctaveOffset = 0;
+            
+            isRunning = true;
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'inline-block';
+            
+            // Näita kohe esimest astet
+            showNewDegree();
+            
+            // Seadista intervall
+            const tempo = parseFloat(tempoInput.value) * 1000;
+            intervalId = setInterval(showNewDegree, tempo);
+        }
+
+        function stop() {
+            if (!isRunning) return;
+            
+            isRunning = false;
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            
+            clearInterval(intervalId);
+            
+            // Lähtesta oktaavi jälgimine peatamisel
+            lastDegreeNumber = null;
+            lastOctaveOffset = 0;
+            // Jätame viimase harjutuse ekraanile, et saaks sellel pikemalt peatuda
+        }
+
+        startBtn.addEventListener('click', start);
+        stopBtn.addEventListener('click', stop);
+
+        // Klaviatuuri kiirklahvid
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isRunning) {
+                    stop();
+                } else {
+                    start();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
